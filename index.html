@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Weather App</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+      <h1>Weather Application</h1>
+  <div id="weatherheader">
+    <p>Loading day and date ...</p>
+  </div>
+  <div id="searchTop">
+    <input type="text" id="city-input" placeholder="Enter city name">
+    <button onclick="searchWeather()">Search</button>
+  </div>
+  <div id="weather-container">
+    <p>Loading weather data ...</p>
+  </div>
+</div>
+
+  <div id="nextPage">
+    <a href="insert.php">7 days data history</a>
+  </div>
+
+  <script>
+    window.onload = function() {
+      const defaultCity = "Glasgow";
+      showWeather(defaultCity);
+    };
+
+    function searchWeather() {
+      const cityInput = document.getElementById('city-input');
+      const city = cityInput.value.trim();
+      if (city !== '') {
+        showWeather(city);
+        cityInput.value = '';
+      }
+    }
+
+    function showWeather(city) {
+      const storedWeatherData = localStorage.getItem(city);
+      const fiveMinutesInMilliseconds = 5 * 60 * 1000; // 5 minutes in milliseconds
+    
+      if (storedWeatherData) {
+        const weatherData = JSON.parse(storedWeatherData);
+        const currentTime = Date.now();
+        if (navigator.onLine && currentTime - weatherData.timestamp <= fiveMinutesInMilliseconds) {
+          console.log("Data fetched from local storage.");
+          updateWeatherUI(weatherData);
+          return;
+        } else if (!navigator.onLine) {
+          console.log("User is offline. Displaying data from local storage.");
+          updateWeatherUI(weatherData);
+          return;
+        }
+      }
+    
+      const apiKey = "071f57e809fbfdff92f9d0a9dbfa19ea";
+      const apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+    
+      fetch(apiUrl)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("City name invalid or City not Found.");
+          }
+          console.log("Data fetched from API.");
+          return response.json();
+        })
+        .then(data => {
+          console.log(data);
+          const iconUrl = `http://openweathermap.org/img/w/${data.weather[0].icon}.png`;
+          const location = `${data.name}, ${data.sys.country}`;
+          const weatherCondition = `<img src="${iconUrl}" class="center">`;
+          const temperature = `Temperature: ${data.main.temp} °C`;
+          const humidity = `Humidity: ${data.main.humidity}%`;
+          const windSpeed = `Wind Speed: ${data.wind.speed} m/s`;
+          const weatherConditionDescription = `With ${data.weather[0].description} condition`;
+          const weather = `Weather: ${data.weather[0].main}`;
+          const pressure = `Pressure: ${data.main.pressure} Pa`;
+          const showDate = new Date();
+          const formattedDate = showDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          const dayOfWeek = showDate.getDay();
+          const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+          const dayName = daysOfWeek[dayOfWeek];
+    
+          const weatherData = {
+            location,
+            weatherCondition,
+            temperature,
+            humidity,
+            windSpeed,
+            weatherConditionDescription,
+            weather,
+            pressure,
+            formattedDate,
+            dayName,
+            timestamp: Date.now()
+          };
+    
+          localStorage.setItem(city, JSON.stringify(weatherData));
+          updateWeatherUI(weatherData);
+        })
+        .catch(error => {
+          console.log("Error:", error.message);
+          if (!navigator.onLine && !storedWeatherData) {
+            console.log("User is offline. City not found in local storage.");
+            alert("City not found in local storage. Please check your internet connection.");
+          } else if (!navigator.onLine && storedWeatherData) {
+            console.log("User is offline. Displaying data from local storage.");
+            // User is offline. Displaying data from local storage.
+            updateWeatherUI(JSON.parse(storedWeatherData));
+          }else {
+            console.log("City not found or invalid city name.");
+            alert("City not found or invalid city name. Please enter a valid city name.");
+          }
+        });
+    }
+    
+
+    function updateWeatherUI(weatherData) {
+      const weatherheader = document.getElementById("weatherheader");
+      weatherheader.innerHTML=`
+      <div id="date">${weatherData.formattedDate} ${weatherData.dayName}</div>
+      `;
+      const weatherContainer = document.getElementById("weather-container");
+      weatherContainer.innerHTML = `
+        <h2 id="headerr">${weatherData.location}</h2>
+        <div id="cond">${weatherData.weatherCondition}</div>
+        <div id="temp">${weatherData.temperature}</div>
+        <div id="conddesc">${weatherData.weatherConditionDescription}</div>
+        <div id="list">
+          <ul>
+        <li><div id="humi">${weatherData.humidity}</div></li>
+        <li><div id="windspeed">${weatherData.windSpeed}</div></li>
+        <li><div id="weatherdata">${weatherData.weather}</div></li>
+        <li><div id="pressure">${weatherData.pressure}</div></li>
+          </ul>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
